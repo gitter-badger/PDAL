@@ -75,7 +75,8 @@ void GlobalEnvironment::shutdown()
 }
 
 
-GlobalEnvironment::GlobalEnvironment() : m_gdalDebug(), m_geosDebug()
+GlobalEnvironment::GlobalEnvironment() : m_gdalDebug(), m_geosDebug(),
+    m_logFilename("stderr"), m_logLevel(LogLevel::Error)
 {}
 
 

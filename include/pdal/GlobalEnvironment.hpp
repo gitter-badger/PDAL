@@ -78,6 +78,14 @@ public:
         }
         return m_gdalDebug.get();
     }
+    LogLevel::Enum logLevel() const
+        { return m_logLevel; }
+    void setLogLevel(LogLevel::Enum level)
+        { m_logLevel = level; }
+    std::string logFilename() const
+        { return m_logFilename; }
+    void setLogFilename(const std::string& filename)
+        { m_logFilename = filename; }
 
 private:
     GlobalEnvironment();
@@ -85,6 +93,8 @@ private:
 
     std::unique_ptr<gdal::ErrorHandler> m_gdalDebug;
     std::unique_ptr<geos::ErrorHandler> m_geosDebug;
+    std::string m_logFilename;
+    LogLevel::Enum m_logLevel;
 
     GlobalEnvironment(const GlobalEnvironment&); // nope
     GlobalEnvironment& operator=(const GlobalEnvironment&); // nope

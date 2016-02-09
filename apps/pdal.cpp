@@ -33,6 +33,7 @@
 * OF SUCH DAMAGE.
 ****************************************************************************/
 
+#include <pdal/GlobalEnvironment.hpp>
 #include <pdal/KernelFactory.hpp>
 #include <pdal/StageFactory.hpp>
 #include <pdal/pdal_config.hpp>
@@ -66,27 +67,31 @@ void outputVersion()
     std::cout << std::endl;
 }
 
-void outputHelp()
+
+void outputCommands(int indent)
 {
-    std::cout << "Usage: pdal <command> [--debug] [--drivers] [--help] "
-        "[--options[=<driver name>]] [--version]" << std::endl << std::endl;
-    std::cout << "  --debug      Show debug information" << std::endl;
-    std::cout << "  --drivers    Show drivers" << std::endl;
-    std::cout << "  -h [--help]  Print help message" << std::endl;
-    std::cout << "  --options [=arg(=all)]" << std::endl;
-    std::cout << "               Show driver options" << std::endl;
-    std::cout << "  --version    Show version info" << std::endl;
+    KernelFactory f(false);
+
+    std::string leading(indent, ' ');
+
+    for (auto name : PluginManager::names(PF_PluginType_Kernel))
+        std::cout << leading << splitDriverName(name) << std::endl;
+}
+
+
+void outputHelp(ProgramArgs& args)
+{
+    std::cout << "usage: pdal <options | command>";
+    args.dump(std::cout, 2, Utils::screenWidth());
     std::cout << std::endl;
 
     std::cout << "The following commands are available:" << std::endl;
 
-    KernelFactory f(false);
-    StringList loaded_kernels = PluginManager::names(PF_PluginType_Kernel);
-
-    for (auto name : loaded_kernels)
-        std::cout << "   - " << splitDriverName(name) << std::endl;
+    outputCommands(2);
+    std::cout << std::endl;
     std::cout << "See http://pdal.io/apps.html for more detail" << std::endl;
 }
+
 
 void outputDrivers()
 {
@@ -174,18 +179,6 @@ void outputOptions(std::string const& n)
 }
 
 
-void outputCommands()
-{
-    KernelFactory f(false);
-    std::vector<std::string> loaded_kernels;
-    loaded_kernels = PluginManager::names(PF_PluginType_Kernel);
-    for (auto name : loaded_kernels)
-    {
-        std::cout << splitDriverName(name) << std::endl;
-    }
-}
-
-
 void outputOptions()
 {
     // Force plugin loading.
@@ -200,10 +193,34 @@ void outputOptions()
 
 int main(int argc, char* argv[])
 {
+    int verbose;
+    bool listDrivers;
+    bool listCommands;
+    bool help;
+    std::string logFilename;
+    std::string driverOptions;
+    bool version;
+    bool printBuild;
+
+    ProgramArgs args;
+
+    Arg& verboseArg = args.add("verbose,v",
+        "Output level (error=0, debug=3, max=8)", verbose);
+    args.add("drivers", "List all available drivers", listDrivers);
+    args.add("driver-options", "Show options for a driver", driverOptions);
+    args.add("options", "Show options for a driver", driverOptions).setHidden();
+    args.add("help,h", "Display program help.", help);
+    Arg& logFilenameArg = args.add("log",
+        "Destination filename for log output", logFilename);
+    args.add("version", "Display PDAL version", version);
+    args.add("list-commands", "List available commands", listCommands);
+    args.add("build-info", "Print build information", printBuild);
+    args.add("debug", "Print build information", printBuild).setHidden();
+
     // No arguments, print basic usage, plugins will be loaded
     if (argc < 2)
     {
-        outputHelp();
+        outputHelp(args);
         return 1;
     }
 
@@ -254,89 +271,47 @@ int main(int argc, char* argv[])
         return app->run(count, const_cast<char const **>(argv), command);
     }
 
-    // Otherwise, process the remaining args to see if they are supported
-    bool debug = false;
-    bool drivers = false;
-    bool help = false;
-    bool options = false;
-    bool version = false;
-    std::string optString("all");  // --options will default to displaying information on all available stages
-    for (int i = 1; i < argc; ++i)
-    {
-        if (boost::iequals(argv[i], "--debug"))
-        {
-            debug = true;
-        }
-        else if (boost::iequals(argv[i], "--drivers"))
-        {
-            drivers = true;
-        }
-        else if (boost::iequals(argv[i], "--help") || boost::iequals(argv[i], "-h"))
-        {
-            help = true;
-        }
-        else if (boost::algorithm::istarts_with(argv[i], "--options"))
-        {
-            std::vector<std::string> optionsVec;
-            // we are rather unsophisticated for now, only splitting on '=', no spaces allowed
-            boost::algorithm::split(optionsVec, argv[i],
-                boost::algorithm::is_any_of("="), boost::algorithm::token_compress_on);
-            options = true;
-            if (optionsVec.size() == 2)
-                optString = optionsVec[1];
-        }
-        else if (boost::iequals(argv[i], "--version"))
-        {
-            version = true;
-        }
-        else if (boost::iequals(argv[i], "--list-commands"))
-        {
-            outputCommands();
-            return 0;
-        }
-        else
-        {
-            if (boost::algorithm::istarts_with(argv[i], "--"))
-                std::cerr << "Unknown option '" << argv[i] <<"' not recognized" << std::endl << std::endl;
-        }
-    }
+    // Remove the program name.
+    argv++;
+    argc--;
 
+    args.parse(argc, argv);
+
+    if (help)
+    {
+        outputHelp(args);
+        return 0;
+    }
     if (version)
     {
         outputVersion();
         return 0;
     }
-
-    if (drivers)
-    {
-        outputDrivers();
-        return 0;
-    }
-
-    if (options)
-    {
-        if (boost::iequals(optString, "all"))
-            outputOptions();
-        else
-            outputOptions(optString);
-        return 0;
-    }
-
-    if (debug)
+    if (printBuild)
     {
         std::cerr << getPDALDebugInformation() << std::endl;
         return 0;
     }
 
-    if (help)
+    // Should probably load log stuff.
+    if (logFilenameArg.set())
+        GlobalEnvironment::get().setLogFilename(logFilename);
+    if (verboseArg.set())
+        GlobalEnvironment::get().setLogLevel(LogLevel::Enum(verbose));
+    if (listCommands)
     {
-        outputHelp();
+        outputCommands(0);
         return 0;
     }
-
-    if (!isValidKernel)
-        std::cerr << "Command '" << command <<"' not recognized" << std::endl << std::endl;
-    outputHelp();
-    return 1;
+    if (listDrivers)
+    {
+        outputDrivers();
+        return 0;
+    }
+    if (driverOptions.size())
+    {
+        outputOptions(driverOptions);
+        return 0;
+    }
 }
 
