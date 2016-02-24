@@ -34,8 +34,6 @@
 
 #include <iostream>
 
-#include <boost/lexical_cast.hpp>
-
 #include <pdal/util/IStream.hpp>
 #include <pdal/util/OStream.hpp>
 
@@ -92,7 +90,7 @@ bool BpfHeader::readV3(ILeStream& stream)
         return false;
 
     stream.get(m_ver, 4);
-    m_version = boost::lexical_cast<int32_t>(m_ver);
+    Utils::fromString(m_ver, m_version);
 
     uint8_t numDim;
     stream >> m_len >> numDim >> interleave >> m_compression >>
@@ -326,7 +324,7 @@ bool BpfUlemFile::write(OLeStream& stream)
     stream << m_len;
     stream.put(m_filename, 32);
 
-    std::ifstream in(m_filespec);
+    std::ifstream in(m_filespec, std::ios::binary);
     uint32_t len = m_len;
 
     const uint32_t MAX_BLOCKSIZE = 1000000;

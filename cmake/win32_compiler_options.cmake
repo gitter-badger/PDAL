@@ -12,6 +12,8 @@ if (MSVC)
       set(PDAL_COMPILER_VC8 1)
     endif()
 
+    add_definitions(-DBOOST_ALL_NO_LIB)
+
     # check for MSVC 8+
     if (NOT (MSVC_VERSION VERSION_LESS 1400))
         add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
@@ -19,8 +21,6 @@ if (MSVC)
         add_definitions(-D_CRT_NONSTDC_NO_WARNING)
         add_definitions(-D_SCL_SECURE_NO_WARNINGS)
         add_definitions(-DNOMINMAX)
-        add_definitions(-DBOOST_LIB_TOOLSET="vc110")
-        add_definitions(-DBOOST_ALL_DYN_LINK)
 
         # Nitro makes use of Exception Specifications, which results in
         # numerous warnings when compiling in MSVC. We will ignore them for

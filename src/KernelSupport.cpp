@@ -34,17 +34,14 @@
 
 #include <pdal/KernelSupport.hpp>
 
-#include <boost/filesystem.hpp>
-#include <boost/algorithm/string.hpp>
-
 #include <pdal/util/FileUtils.hpp>
-#include <pdal/PipelineReader.hpp>
 #include <pdal/util/Utils.hpp>
 
 namespace pdal
 {
 
-PipelineManagerPtr KernelSupport::makePipeline(const std::string& inputFile)
+PipelineManagerPtr KernelSupport::makePipeline(const std::string& inputFile,
+    bool noPoints)
 {
     if (!pdal::FileUtils::fileExists(inputFile))
         throw app_runtime_error("file not found: " + inputFile);
@@ -53,13 +50,11 @@ PipelineManagerPtr KernelSupport::makePipeline(const std::string& inputFile)
 
     if (inputFile == "STDIN")
     {
-        PipelineReader pipeReader(*output);
-        pipeReader.readPipeline(std::cin);
+        output->readPipeline(std::cin);
     }
-    else if (boost::filesystem::extension(inputFile) == ".xml")
+    else if (FileUtils::extension(inputFile) == ".xml")
     {
-        PipelineReader pipeReader(*output);
-        pipeReader.readPipeline(inputFile);
+        output->readPipeline(inputFile);
     }
     else
     {
@@ -69,84 +64,14 @@ PipelineManagerPtr KernelSupport::makePipeline(const std::string& inputFile)
         if (driver.empty())
             throw app_runtime_error("Cannot determine input file type of " +
                 inputFile);
-        output->addReader(driver);
+        Stage& reader = output->addReader(driver);
+        Options ro;
+        ro.add("filename", inputFile);
+        if (noPoints)
+            ro.add("count", 0);
+        reader.setOptions(ro);
     }
     return output;
-}
-
-
-PercentageCallback::PercentageCallback(double major, double minor)
-    : m_lastMajorPerc(-1 * major)
-    , m_lastMinorPerc(-1 * minor)
-    , m_done(false)
-{}
-
-
-void PercentageCallback::callback()
-{
-    if (m_done)
-        return;
-
-    double currPerc = getPercentComplete();
-
-    if (pdal::Utils::compare_distance<double>(currPerc, 100.0))
-    {
-        std::cerr << ".100" << std::endl;
-        m_done = true;
-    }
-    else if (currPerc >= m_lastMajorPerc + 10.0)
-    {
-        std::cerr << (int)currPerc << std::flush;
-        m_lastMajorPerc = currPerc;
-        m_lastMinorPerc = currPerc;
-    }
-    else if (currPerc >= m_lastMinorPerc + 2.0)
-    {
-        std::cerr << '.' << std::flush;
-        m_lastMinorPerc = currPerc;
-    }
-}
-
-ShellScriptCallback::ShellScriptCallback(
-    const std::vector<std::string>& command)
-{
-    double major_tick(10.0);
-    double minor_tick(2.0);
-
-    if (command.size())
-    {
-        m_command = command[0];
-        if (command.size() == 3)
-        {
-            major_tick = boost::lexical_cast<double>(command[1]);
-            minor_tick = boost::lexical_cast<double>(command[2]);
-        }
-        else if (command.size() == 2)
-            major_tick = boost::lexical_cast<double>(command[1]);
-    }
-    PercentageCallback(major_tick, minor_tick);
-}
-
-
-void ShellScriptCallback::callback()
-{
-    if (m_done)
-        return;
-
-    double currPerc = getPercentComplete();
-    if (Utils::compare_distance<double>(currPerc, 100.0))
-        m_done = true;
-    else if (currPerc >= m_lastMajorPerc + 10.0)
-    {
-        std::string output;
-        Utils::run_shell_command(m_command + " " +
-            boost::lexical_cast<std::string>(static_cast<int>(currPerc)),
-            output);
-        m_lastMajorPerc = currPerc;
-        m_lastMinorPerc = currPerc;
-    }
-    else if (currPerc >= m_lastMinorPerc + 2.0)
-        m_lastMinorPerc = currPerc;
 }
 
 } // namespace pdal

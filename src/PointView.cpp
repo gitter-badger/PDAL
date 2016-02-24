@@ -37,10 +37,22 @@
 #include <pdal/PointView.hpp>
 #include <pdal/PointViewIter.hpp>
 
-#include <boost/lexical_cast.hpp>
-
 namespace pdal
 {
+
+int PointView::m_lastId = 0;
+
+PointView::PointView(PointTableRef pointTable) : m_pointTable(pointTable),
+m_size(0), m_id(0)
+{
+	m_id = ++m_lastId;
+}
+
+PointView::PointView(PointTableRef pointTable, const SpatialReference& srs) :
+	m_pointTable(pointTable), m_size(0), m_id(0), m_spatialReference(srs)
+{
+	m_id = ++m_lastId;
+}
 
 PointViewIter PointView::begin()
 {

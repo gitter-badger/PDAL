@@ -65,11 +65,12 @@ void CropFilter::processOptions(const Options& options)
 {
     m_cropOutside = options.getValueOrDefault<bool>("outside", false);
     m_assignedSrs = options.getValueOrDefault<SpatialReference>("a_srs");
+
     try
     {
         m_bounds = options.getValues<BOX2D>("bounds");
     }
-    catch (boost::bad_lexical_cast)
+    catch (Option::cant_convert)
     {
         try
         {
@@ -77,16 +78,26 @@ void CropFilter::processOptions(const Options& options)
             for (auto& i: b3d)
                 m_bounds.push_back(i.to2d());
         }
-        catch (boost::bad_lexical_cast)
+        catch (Option::cant_convert)
         {
             std::ostringstream oss;
-            oss << "Invalid bounds for " << getName() << ".  "
+            oss << getName() << ": Invalid bounds provided as option.  "
                 "Format: '([xmin,xmax],[ymin,ymax])'.";
             throw pdal_error(oss.str());
         }
     }
 
-    m_polys = options.getValues<Polygon>("polygon");
+    try
+    {
+        m_polys = options.getValues<Polygon>("polygon");
+    }
+    catch (Option::cant_convert)
+    {
+        std::ostringstream oss;
+        oss << getName() << ": Invalid polygon specification as option.  "
+            "Must be valid GeoJSON/WTK";
+        throw pdal_error(oss.str());
+    }
     if (m_polys.size())
     {
         m_geoms.clear();

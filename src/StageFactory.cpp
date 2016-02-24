@@ -34,6 +34,7 @@
 
 #include <pdal/StageFactory.hpp>
 #include <pdal/PluginManager.hpp>
+#include <pdal/util/FileUtils.hpp>
 
 // filters
 #include <chipper/ChipperFilter.hpp>
@@ -63,6 +64,7 @@
 #include <qfit/QfitReader.hpp>
 #include <sbet/SbetReader.hpp>
 #include <terrasolid/TerrasolidReader.hpp>
+#include <text/TextReader.hpp>
 #include <tindex/TIndexReader.hpp>
 
 // writers
@@ -73,8 +75,6 @@
 #include <derivative/DerivativeWriter.hpp>
 #include <text/TextWriter.hpp>
 #include <null/NullWriter.hpp>
-
-#include <boost/filesystem.hpp>
 
 #include <sstream>
 #include <string>
@@ -90,7 +90,7 @@ std::string StageFactory::inferReaderDriver(const std::string& filename)
     if (Utils::iequals(http, "http"))
         return "readers.greyhound";
 
-    std::string ext = boost::filesystem::extension(filename);
+    std::string ext = FileUtils::extension(filename);
     std::map<std::string, std::string> drivers;
     drivers["bin"] = "readers.terrasolid";
     drivers["bpf"] = "readers.bpf";
@@ -110,7 +110,8 @@ std::string StageFactory::inferReaderDriver(const std::string& filename)
     drivers["sqlite"] = "readers.sqlite";
     drivers["sid"] = "readers.mrsid";
     drivers["tindex"] = "readers.tindex";
-    drivers["txt"] = "readers.ilvis2";
+    drivers["txt"] = "readers.text";
+    drivers["h5"] = "readers.icebridge";
 
     if (ext == "")
         return "";
@@ -126,7 +127,7 @@ std::string StageFactory::inferReaderDriver(const std::string& filename)
 
 std::string StageFactory::inferWriterDriver(const std::string& filename)
 {
-    std::string ext = Utils::tolower(boost::filesystem::extension(filename));
+    std::string ext = Utils::tolower(FileUtils::extension(filename));
 
     std::map<std::string, std::string> drivers;
     drivers["bpf"] = "writers.bpf";
@@ -163,7 +164,7 @@ std::string StageFactory::inferWriterDriver(const std::string& filename)
 pdal::Options StageFactory::inferWriterOptionsChanges(
     const std::string& filename)
 {
-    std::string ext = boost::filesystem::extension(filename);
+    std::string ext = FileUtils::extension(filename);
     ext = Utils::tolower(ext);
     Options options;
 
@@ -216,6 +217,7 @@ StageFactory::StageFactory(bool no_plugins)
     PluginManager::initializePlugin(QfitReader_InitPlugin);
     PluginManager::initializePlugin(SbetReader_InitPlugin);
     PluginManager::initializePlugin(TerrasolidReader_InitPlugin);
+    PluginManager::initializePlugin(TextReader_InitPlugin);
     PluginManager::initializePlugin(TIndexReader_InitPlugin);
 
     // writers

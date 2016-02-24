@@ -36,7 +36,7 @@
 #include <pdal/PipelineManager.hpp>
 #include <pdal/Stage.hpp>
 #include <pdal/SpatialReference.hpp>
-#include <pdal/UserCallback.hpp>
+#include <pdal/PDALUtils.hpp>
 
 #include "StageRunner.hpp"
 
@@ -45,18 +45,12 @@
 namespace pdal
 {
 
-
-Stage::Stage()
-  : m_callback(new UserCallback), m_progressFd(-1)
+Stage::Stage() : m_progressFd(-1)
 {
     Construct();
 }
 
 
-/// Only add options if an option with the same name doesn't already exist.
-///
-/// \param[in] ops  Options to add.
-///
 void Stage::addConditionalOptions(const Options& opts)
 {
     for (const auto& o : opts.getOptions())
@@ -376,6 +370,7 @@ void Stage::setSpatialReference(MetadataNode& m,
     MetadataNode spatialNode = m.findChild(pred);
     if (spatialNode.empty())
     {
+        m.add(Utils::toMetadata(spatialRef));
         m.add("spatialreference",
            spatialRef.getWKT(SpatialReference::eHorizontalOnly, false),
            "SRS of this stage");
@@ -385,27 +380,6 @@ void Stage::setSpatialReference(MetadataNode& m,
     }
 }
 
-std::vector<Stage *> Stage::findStage(std::string name)
-{
-    std::vector<Stage *> output;
-
-    if (boost::iequals(getName(), name))
-        output.push_back(this);
-
-    for (auto const& stage : m_inputs)
-    {
-        if (boost::iequals(stage->getName(), name))
-            output.push_back(stage);
-        if (stage->getInputs().size())
-        {
-            auto hits = stage->findStage(name);
-            if (hits.size())
-                output.insert(output.end(), hits.begin(), hits.end());
-        }
-    }
-
-    return output;
-}
 
 std::ostream& operator<<(std::ostream& ostr, const Stage& stage)
 {

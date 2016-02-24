@@ -33,13 +33,12 @@
 * OF SUCH DAMAGE.
 ****************************************************************************/
 
-#include <boost/format.hpp>
-
 #include "PgWriter.hpp"
 
 #include <pdal/PointView.hpp>
 #include <pdal/StageFactory.hpp>
 #include <pdal/util/FileUtils.hpp>
+#include <pdal/util/portable_endian.hpp>
 #include <pdal/XMLSchema.hpp>
 
 namespace pdal
@@ -303,7 +302,31 @@ uint32_t PgWriter::SetupSchema(uint32_t srid)
     }
 
     if (schema_count == 0)
-        pcid = 1;
+    {
+        // Try using the sequence
+        // pgpointcloud with the sequence is not yet
+        // released. See https://github.com/PDAL/PDAL/issues/1101 for
+        // SQL to create this sequence on the pointcloud_formats
+        // table.
+        char* have_seq = pg_query_once(m_session,
+                "select count(*) from pg_class where relname = 'pointcloud_formats_pcid_sq'");
+        int seq_count = atoi(have_seq);
+        if (seq_count)
+        {
+            // We have the sequence, use its nextval
+            char *pcid_str = pg_query_once(m_session,
+                    "SELECT nextval('pointcloud_formats_pcid_sq')");
+            if (!pcid_str)
+                throw pdal_error("Unable to select nextval from pointcloud_formats_pcid_seq");
+            pcid = atoi(pcid_str);
+        }
+        else
+        {
+            // We don't have the sequence installed, all we can do is
+            // set to 1 and increment
+            pcid = 1;
+        }
+    }
     else
     {
         char *pcid_str = pg_query_once(m_session,
@@ -488,20 +511,18 @@ void PgWriter::writeTile(const PointViewPtr view)
     CompressionType::Enum compression_v = CompressionType::None;
     uint32_t compression = htobe32(static_cast<uint32_t>(compression_v));
 
-#ifdef BOOST_LITTLE_ENDIAN
-    // needs to be 1 byte
-    options << boost::format("%02x") % 1;
-#elif BOOST_BIG_ENDIAN
-    // needs to be 1 byte
-    options << boost::format("%02x") % 0;
+#if BYTE_ORDER == LITTLE_ENDIAN
+    options << "01";
+#elif BYTE_ORDER == BIG_ENDIAN
+    options << "00";
 #endif
 
     // needs to be 4 bytes
-    options << boost::format("%08x") % pcid;
+    options << std::hex << std::setfill('0') << std::setw(8) << pcid;
     // needs to be 4 bytes
-    options << boost::format("%08x") % compression;
+    options << std::hex << std::setfill('0') << std::setw(8) << compression;
     // needs to be 4 bytes
-    options << boost::format("%08x") % num_points;
+    options << std::hex << std::setfill('0') << std::setw(8) << num_points;
 
     m_insert.append(options.str());
     m_insert.append(hexrep);

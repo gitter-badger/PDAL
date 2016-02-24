@@ -44,8 +44,6 @@
 #include <pdal/XMLSchema.hpp>
 #endif
 
-#include <boost/program_options.hpp>
-
 namespace pdal
 {
 
@@ -156,14 +154,11 @@ using namespace std;
 
 uint32_t parseInt(const string& s)
 {
-    try
-    {
-        return boost::lexical_cast<uint32_t>(s);
-    }
-    catch (boost::bad_lexical_cast)
-    {
+    uint32_t i;
+
+    if (!Utils::fromString(s, i))
         throw app_runtime_error(string("Invalid integer: ") + s);
-    }
+    return i;
 }
 
 
@@ -232,6 +227,8 @@ MetadataNode InfoKernel::dumpSummary(const QuickInfo& qi)
     MetadataNode summary;
     summary.add("num_points", qi.m_pointCount);
     summary.add("spatial_reference", qi.m_srs.getWKT());
+    MetadataNode srs = pdal::Utils::toMetadata(qi.m_srs);
+    summary.add(srs);
     MetadataNode bounds = summary.add("bounds");
     MetadataNode x = bounds.add("X");
     x.add("min", qi.m_bounds.minx);
@@ -259,36 +256,32 @@ MetadataNode InfoKernel::dumpSummary(const QuickInfo& qi)
 
 void InfoKernel::setup(const std::string& filename)
 {
-    Options readerOptions;
-
-    readerOptions.add("filename", filename);
-    if (!m_needPoints)
-        readerOptions.add("count", 0);
-
-    m_manager = KernelSupport::makePipeline(filename);
-    m_reader = m_manager->getStage();
-    Stage *stage = m_reader;
-
-    if (m_dimensions.size())
-        m_options.add("dimensions", m_dimensions, "List of dimensions");
-
-    Options options = m_options + readerOptions;
-    m_reader->setOptions(options);
+    m_manager = KernelSupport::makePipeline(filename, !m_needPoints);
+    Stage *stage = m_manager->getStage();
 
     if (m_showStats)
     {
         m_statsStage = &(m_manager->addFilter("filters.stats"));
-        m_statsStage->setOptions(options);
+        if (m_dimensions.size())
+        {
+            Options ops;
+            ops.add("dimensions", m_dimensions);
+            m_statsStage->addOptions(ops);
+        }
+
         m_statsStage->setInput(*stage);
         stage = m_statsStage;
     }
     if (m_boundary)
     {
         m_hexbinStage = &(m_manager->addFilter("filters.hexbin"));
-        m_hexbinStage->setOptions(options);
+        if (!m_hexbinStage) {
+            throw pdal_error("Unable to compute boundary -- "
+                "http://github.com/hobu/hexer is not linked. "
+                "See the \"boundary\" member in \"stats\" for a coarse "
+                "bounding box");
+        }
         m_hexbinStage->setInput(*stage);
-        stage = m_hexbinStage;
-        Options readerOptions;
     }
 }
 
@@ -350,14 +343,17 @@ void InfoKernel::dump(MetadataNode& root)
         assert(viewSet.size() == 1);
         root.add(dumpPoints(*viewSet.begin()).clone("points"));
     }
+
     if (m_queryPoint.size())
     {
         PointViewSet viewSet = m_manager->views();
         assert(viewSet.size() == 1);
         root.add(dumpQuery(*viewSet.begin()));
     }
+
     if (m_showMetadata)
         root.add(m_reader->getMetadata().clone("metadata"));
+
     if (m_boundary)
     {
         PointViewSet viewSet = m_manager->views();
@@ -395,7 +391,11 @@ MetadataNode InfoKernel::dumpQuery(PointViewPtr inView) const
     std::vector<std::string> tokens = Utils::split2(location, seps);
     std::vector<double> values;
     for (auto ti = tokens.begin(); ti != tokens.end(); ++ti)
-        values.push_back(boost::lexical_cast<double>(*ti));
+    {
+        double d;
+        if (Utils::fromString(*ti, d))
+            values.push_back(d);
+    }
 
     if (values.size() != 2 && values.size() != 3)
         throw app_runtime_error("--points must be two or three values");

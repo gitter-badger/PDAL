@@ -101,7 +101,8 @@ RUN git clone --depth=1 https://github.com/OSGeo/gdal.git \
             --with-liblzma=yes \
             --with-epsilon=/usr \
     && make -j 4 \
-    && make install
+    && make install \
+    && rm -rf gdal
 
 RUN git clone https://github.com/hobu/nitro \
     && cd nitro \
@@ -111,7 +112,8 @@ RUN git clone https://github.com/hobu/nitro \
         -DCMAKE_INSTALL_PREFIX=/usr \
         .. \
     && make \
-    && make install
+    && make install \
+    && rm -rf nitro
 
 RUN git clone https://github.com/LASzip/LASzip.git laszip \
     && cd laszip \
@@ -122,7 +124,8 @@ RUN git clone https://github.com/LASzip/LASzip.git laszip \
         -DCMAKE_BUILD_TYPE="Release" \
         .. \
     && make \
-    && make install
+    && make install \
+    && rm -rf laszip
 
 
 RUN git clone https://github.com/hobu/hexer.git \
@@ -134,7 +137,8 @@ RUN git clone https://github.com/hobu/hexer.git \
         -DCMAKE_BUILD_TYPE="Release" \
         .. \
     && make \
-    && make install
+    && make install \
+    && rm -rf hexer
 
 RUN git clone https://github.com/CRREL/points2grid.git \
     && cd points2grid \
@@ -145,7 +149,8 @@ RUN git clone https://github.com/CRREL/points2grid.git \
         -DCMAKE_BUILD_TYPE="Release" \
         .. \
     && make \
-    && make install
+    && make install \
+    && rm -rf points2grid
 
 RUN git clone  https://github.com/verma/laz-perf.git \
     && cd laz-perf \
@@ -156,7 +161,8 @@ RUN git clone  https://github.com/verma/laz-perf.git \
         -DCMAKE_BUILD_TYPE="Release" \
         .. \
     && make \
-    && make install
+    && make install \
+    && rm -rf laz-perf
 
 RUN wget http://bitbucket.org/eigen/eigen/get/3.2.7.tar.gz \
         && tar -xvf 3.2.7.tar.gz \
@@ -212,7 +218,8 @@ RUN git clone https://github.com/chambbj/pcl.git \
                 -DCMAKE_BUILD_TYPE="Release" \
                 .. \
         && make \
-        && make install
+        && make install \
+        && rm -rf pcl
 
 
 
@@ -221,7 +228,8 @@ RUN svn co -r 2691 https://svn.osgeo.org/metacrs/geotiff/trunk/libgeotiff/ \
     && ./autogen.sh \
     && ./configure --prefix=/usr \
     && make \
-    && make install
+    && make install \
+    && rm -rf libgeotiff
 
 RUN apt-get update && apt-get install -y --fix-missing --no-install-recommends \
         ninja-build \
@@ -246,22 +254,31 @@ RUN rm -rf laszip laz-perf points2grid pcl nitro hexer 3.2.7.tar.gz eigen-eigen-
 RUN apt-get clean
 
 
-#RUN wget http://sourceforge.net/projects/arma/files/armadillo-6.400.3.tar.gz \
-#    && tar zxvf armadillo-6.400.3.tar.gz \
-#    && cd armadillo-6.400.3 \
-#    && cmake . -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release \
-#     && make \
-#     && make install
+RUN git clone https://github.com/gadomski/armadillo.git \
+    && cd armadillo/branch-5.600 \
+    && cmake . -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release \
+    && make \
+    && make install \
+    && rm -rf armadillo
 
-#RUN git clone https://github.com/gadomski/fgt.git \
-#    && cd fgt \
-#    && cmake . -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release \
-#    && make \
-#    && make install
+ADD fgt-pr-13.patch /
 
-#RUN git clone https://github.com/hobu/cpd.git \
-#    && cd cpd \
-#    && git checkout armadillo-6 \
-#    && cmake . -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DFgt_DIR=/usr \
-#    && make \
-#    && make install
+RUN git clone https://github.com/gadomski/fgt.git \
+    && cd fgt \
+    && git checkout b3bcea4767fc0fd018bd280a1bc8e8d6c44c513e \
+    && patch -p1 < /fgt-pr-13.patch \
+    && cmake . -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release \
+    && make \
+    && make install \
+    && rm -rf fgt
+
+RUN git clone https://github.com/gadomski/cpd.git \
+    && cd cpd \
+    && cmake . -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DFgt_DIR=/usr \
+    && make \
+    && make install \
+    && mv /usr/lib/cpd/cmake/CpdConfig.cmake /usr/lib/cpd/cmake/CPDConfig.cmake \
+    && mv /usr/lib/cpd/cmake/CpdConfigVersion.cmake /usr/lib/cpd/cmake/CPDConfigVersion.cmake \
+    && rm -rf cpd
+
+

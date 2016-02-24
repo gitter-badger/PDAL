@@ -40,24 +40,6 @@ public:
 };
 
 
-namespace
-{
-namespace PosType
-{
-
-/**
-  Positional type.  Either None, Optional or Required.
-*/
-enum Enum
-{
-    None,       ///< Not positional
-    Required,   ///< Required positional
-    Optional    ///< Optional positional
-};
-
-} // namespace PosType
-} // unnamed namespace
-
 /**
    Description of an argument that can be parsed by \class ProgramArgs.
 
@@ -67,6 +49,17 @@ enum Enum
 */
 class Arg
 {
+public:
+/**
+  Positional type.  Either None, Optional or Required.
+*/
+enum class PosType
+{
+    None,       ///< Not positional
+    Required,   ///< Required positional
+    Optional    ///< Optional positional
+};
+
 protected:
     /**
       Constructor.
@@ -175,7 +168,7 @@ public:
       Returns the positional type of the argument.
       \note  Not intended to be called from user code.
     */
-    PosType::Enum positional() const
+    PosType positional() const
         { return m_positional; }
 
     /**
@@ -227,7 +220,7 @@ protected:
     std::string m_rawVal;
     bool m_set;
     bool m_hidden;
-    PosType::Enum m_positional;
+    PosType m_positional;
 };
 
 /**
@@ -321,7 +314,7 @@ public:
             if (m_positional == PosType::Required)
             {
                 std::ostringstream oss;
-            
+
                 oss << "Missing value for positional argument '" <<
                     m_longname << "'.";
                 throw arg_error(oss.str());
@@ -516,7 +509,7 @@ public:
       Set the argument's value from the positional list.
 
       List-based arguments consume ALL positional arguments until
-      one is found that can't be converted to the type of the bound variable. 
+      one is found that can't be converted to the type of the bound variable.
       \note  Not intended to be called from user code.
 
       \param posList  The list of positional strings specified on the command
@@ -538,7 +531,7 @@ public:
             {
                 break;
             }
-        if (cnt == 0 && m_positional == PosType::Required)
+        if (cnt == 0 && m_positional == Arg::PosType::Required)
         {
             std::ostringstream oss;
 
@@ -710,7 +703,7 @@ public:
             {
                 i += parseArg(arg, value);
             }
-            catch (arg_error& e)
+            catch (arg_error& )
             {
                 i++;
             }
@@ -809,11 +802,12 @@ public:
             info.push_back(std::make_pair(nameDescrip, a->description()));
             namelen = std::max(namelen, nameDescrip.size());
         }
-        int secondIndent = indent + 4;
+        size_t secondIndent = indent + 4;
         int postNameSpacing = 2;
-        int leadlen = namelen + indent + postNameSpacing;
-        int firstlen = (int)totalWidth - leadlen - 1;
-        int secondLen = totalWidth - secondIndent - 1;
+        size_t leadlen = namelen + indent + postNameSpacing;
+        size_t firstlen = totalWidth - leadlen - 1;
+        size_t secondLen = totalWidth - secondIndent - 1;
+
         bool skipfirst = (firstlen < 10);
         if (skipfirst)
             firstlen = secondLen;
@@ -1065,9 +1059,9 @@ private:
         for (auto ai = m_args.begin(); ai != m_args.end(); ++ai)
         {
             Arg *arg = ai->get();
-            if (arg->positional() == PosType::Optional)
+            if (arg->positional() == Arg::PosType::Optional)
                 opt = true;
-            if (opt && (arg->positional() == PosType::Required))
+            if (opt && (arg->positional() == Arg::PosType::Required))
                 throw arg_error("Found required positional argument after "
                     "optional positional argument.");
         }

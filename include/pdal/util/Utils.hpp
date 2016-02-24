@@ -46,13 +46,12 @@
 #include <limits>
 #include <cstring>
 #include <sstream>
+#include <typeinfo>
 #include <vector>
 #include <map>
+#include <cstdint>
 
 #include "pdal_util_export.hpp"
-
-#include <boost/numeric/conversion/cast.hpp>
-#include <boost/lexical_cast.hpp>
 
 namespace pdal
 {
@@ -230,14 +229,17 @@ namespace Utils
         if (s.empty())
             return result;
 
-        auto it = s.begin();
-        decltype(it) endIt;
+        auto it = s.cbegin();
+        auto const end = s.cend();
+        decltype(it) nextIt;
         do
         {
-            endIt = std::find_if(it, s.end(), p);
-            result.push_back(std::string(it, endIt));
-            it = endIt + 1;
-        } while (endIt != s.end());
+            nextIt = std::find_if(it, end, p);
+            result.push_back(std::string(it, nextIt));
+            if (nextIt != end)
+                it = nextIt + 1;
+        } while (nextIt != end);
+
         return result;
     }
 
@@ -255,15 +257,18 @@ namespace Utils
         if (s.empty())
             return result;
 
-        auto it = s.begin();
-        decltype(it) endIt;
+        auto it = s.cbegin();
+        auto const end = s.cend();
+        decltype(it) nextIt;
         do
         {
-            endIt = std::find_if(it, s.end(), p);
-            if (it != endIt)
-                result.push_back(std::string(it, endIt));
-            it = endIt + 1;
-        } while (endIt != s.end());
+            nextIt = std::find_if(it, end, p);
+            if (it != nextIt)
+                result.push_back(std::string(it, nextIt));
+            if (nextIt != end)
+                it = nextIt + 1;
+        } while (nextIt != end);
+
         return result;
     }
 
@@ -443,14 +448,16 @@ namespace Utils
     template<typename T>
     bool fromString(const std::string& from, T& to)
     {
-        try
-        {
-            to = boost::lexical_cast<T>(from);
-        }
-        catch (boost::bad_lexical_cast&)
-        {
-            return false;
-        }
+        std::istringstream iss(from);
+
+        iss >> to;
+        return !iss.fail();
+    }
+
+    template<>
+    inline bool fromString(const std::string& from, std::string& to)
+    {
+        to = from;
         return true;
     }
 

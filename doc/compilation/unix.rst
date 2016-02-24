@@ -25,7 +25,7 @@ PDAL is known to compile on Linux 2.6's of various flavors and OSX with XCode.
 
 .. seealso::
 
-    :ref:`vagrant` contains an automated way to build PDAL and all of
+    :ref:`docker` contains an automated way to build PDAL and all of
     its dependencies.
 
 .. note::
@@ -315,5 +315,4 @@ configure your :ref:`dependencies`.
 .. _`Autoconf`: http://www.gnu.org/software/autoconf/
 .. _`LLVM`: http://llvm.org/
 .. _`OSGeo4W`: http://trac.osgeo.org/osgeo4w/
-.. _`Boost`: http://www.boost.org/
 

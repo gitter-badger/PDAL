@@ -34,9 +34,8 @@
 
 #include <pdal/pdal_test_main.hpp>
 
+#include <array>
 #include <random>
-
-#include <boost/property_tree/xml_parser.hpp>
 
 #include <pdal/PointView.hpp>
 #include <pdal/PointViewIter.hpp>
@@ -415,7 +414,7 @@ TEST(PointViewTest, order)
 
     std::random_device dev;
     std::mt19937 generator(dev());
-   
+
     for (size_t i = 0; i < COUNT; ++i)
         views[i] = PointViewPtr(new PointView(table));
     std::shuffle(views.begin(), views.end(), generator);

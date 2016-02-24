@@ -1,6 +1,6 @@
 FROM pdal/dependencies:latest
 MAINTAINER Howard Butler <howard@hobu.co>
-ARG branch=master
+#ARG branch=master
 
 ENV CC clang
 ENV CXX clang++
@@ -14,12 +14,12 @@ RUN apt-get update && apt-get install -y --fix-missing --no-install-recommends \
 
 RUN git clone --depth=1 https://github.com/PDAL/PDAL \
 	&& cd PDAL \
-	&& git checkout ${branch} \
+	&& git checkout master \
 	&& mkdir build \
 	&& cd build \
 	&& cmake \
 		-DBUILD_PLUGIN_ATTRIBUTE=ON \
-		-DBUILD_PLUGIN_CPD=OFF \
+		-DBUILD_PLUGIN_CPD=ON \
 		-DBUILD_PLUGIN_GREYHOUND=ON \
 		-DBUILD_PLUGIN_HEXBIN=ON \
 		-DBUILD_PLUGIN_ICEBRIDGE=ON \
@@ -42,17 +42,16 @@ RUN git clone --depth=1 https://github.com/PDAL/PDAL \
 		-DCMAKE_BUILD_TYPE=Release \
 		.. \
 	&& make -j4 \
-	&& make install
+	&& make install \
+    && rm -rf PDAL
 
-RUN cd /PDAL/python \
-    && pip install packaging \
-    && python setup.py build \
-    && python setup.py install
+#RUN pip install packaging \
+#    && pip install PDAL
 
 
 RUN git clone https://github.com/PDAL/PRC.git \
     && cd PRC \
-    && git checkout ${branch} \
+    && git checkout master \
     && mkdir build \
     && cd build \
     && echo `pwd` \
@@ -60,10 +59,7 @@ RUN git clone https://github.com/PDAL/PRC.git \
     && cmake \
         -DCMAKE_BUILD_TYPE=Release \
         -DPDAL_DIR=/usr/lib/pdal/cmake \
-        ..
-
-RUN cd /PRC/build \
+        .. \
     && make \
-    && make install
-# cleanup
-RUN rm -rf laszip laz-perf points2grid pcl nitro hexer 3.2.7.tar.gz eigen-eigen-b30b87236a1b PDAL PRC
+    && make install \
+    && rm -rf PRC

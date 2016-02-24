@@ -43,26 +43,31 @@
 #include <pdal/SpatialReference.hpp>
 #include <pdal/GlobalEnvironment.hpp>
 
-
-
 namespace pdal
 {
-
 
 class PDAL_DLL Polygon
 {
     typedef geos::ErrorHandler* ErrorHandlerPtr;
 public:
-
     Polygon();
     Polygon(const std::string& wkt_or_json,
            SpatialReference ref = SpatialReference(),
            ErrorHandlerPtr ctx = pdal::GlobalEnvironment::get().geos());
+    Polygon(const BOX2D&);
+    Polygon(const BOX3D&);
     Polygon(const Polygon&);
     Polygon(GEOSGeometry* g, const SpatialReference& srs, ErrorHandlerPtr ctx);
     Polygon(OGRGeometryH g, const SpatialReference& srs, ErrorHandlerPtr ctx);
     Polygon& operator=(const Polygon&);
+private:
+    Polygon(const std::string& wkt_or_json,
+           SpatialReference ref,
+           GEOSContextHandle_t ctx);
+    Polygon(GEOSGeometry* g, const SpatialReference& srs,
+        GEOSContextHandle_t ctx);
 
+public:
 
     ~Polygon();
     void update(const std::string& wkt_or_json,
@@ -71,6 +76,11 @@ public:
     void setSpatialReference( const SpatialReference& ref)
     {
         m_srs = ref;
+    }
+
+    const SpatialReference& getSpatialReference() const
+    {
+        return m_srs;
     }
 
     Polygon transform(const SpatialReference& ref) const;
@@ -91,7 +101,7 @@ public:
     bool valid() const;
     std::string validReason() const;
 
-    std::string wkt(double precision=8) const;
+    std::string wkt(double precision=8, bool bOutputZ=false) const;
     std::string json(double precision=8) const;
 
     BOX3D bounds() const;
@@ -100,11 +110,12 @@ public:
         { return m_geom != NULL; }
 private:
 
+    void initializeFromBounds(const BOX3D& b);
     GEOSGeometry *m_geom;
     const GEOSPreparedGeometry *m_prepGeom;
 
     SpatialReference m_srs;
-    ErrorHandlerPtr m_ctx;
+    GEOSContextHandle_t m_ctx;
 
     void prepare();
 

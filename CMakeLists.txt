@@ -51,14 +51,13 @@ set(PDAL_BUILD_VERSION "2.0.0")
 if (APPLE OR WIN32)
     set(PDAL_LIB_NAME pdalcpp)
     set(PDAL_BASE_LIB_NAME pdalcpp)
-    set(PDAL_UTIL_LIB_NAME pdal_util)
-    set(PDAL_PLANG_LIB_NAME pdal_plang)
 else()
     set(PDAL_LIB_NAME pdalcpp)
     set(PDAL_BASE_LIB_NAME pdal_base)
-    set(PDAL_UTIL_LIB_NAME pdal_util)
-    set(PDAL_PLANG_LIB_NAME pdal_plang)
 endif()
+set(PDAL_UTIL_LIB_NAME pdal_util)
+set(PDAL_PLANG_LIB_NAME pdal_plang)
+set(PDAL_BOOST_LIB_NAME pdal_boost)
 
 set(CMAKE_INCLUDE_DIRECTORIES_PROJECT_BEFORE ON)
 
@@ -117,6 +116,10 @@ endif(DEFINED ENV{ORACLE_HOME})
 option(WITH_APPS "Choose if PDAL utilities should be built" TRUE)
 add_feature_info("PDAL application" WITH_APPS
     "the PDAL command line application")
+
+option(WITH_COMPLETION "Install bash completions scripts for command line?" FALSE)
+add_feature_info("Bash completion" WITH_COMPLETION
+    "completion for PDAL command line")
 
 option(BUILD_PLUGIN_ATTRIBUTE "Choose if Attribute filter is built" FALSE)
 add_feature_info("Attribute plugin" BUILD_PLUGIN_ATTRIBUTE
@@ -215,9 +218,8 @@ set(PDAL_BUILD_TYPE ${CMAKE_BUILD_TYPE})
 #  Dependencies.
 #------------------------------------------------------------------------------
 
-include(${PDAL_CMAKE_DIR}/boost.cmake)
 include(${PDAL_CMAKE_DIR}/gdal.cmake)
-include(${PDAL_CMAKE_DIR}/geos.cmake)  # Optional
+include(${PDAL_CMAKE_DIR}/geos.cmake)
 include(${PDAL_CMAKE_DIR}/geotiff.cmake)  # Optional
 include(${PDAL_CMAKE_DIR}/lazperf.cmake)  # Optional
 include(${PDAL_CMAKE_DIR}/laszip.cmake)  # Optional
@@ -263,6 +265,21 @@ include_directories(vendor/rply-1.1.4)
 # PDAL_TARGET_OBJECTS is used to collect the driver object libraries
 set(PDAL_TARGET_OBJECTS "")
 
+add_subdirectory(plugins)
+
+include_directories(vendor/pdalboost)
+
+if (WITH_TESTS)
+    enable_testing()
+    if (MSVC)
+        # Since tests link CRT dynamically (/MD[d]), require gtest to link dynamically too (default is /MT[d])
+        option(gtest_force_shared_crt "Always use shared Visual C++ run-time DLL" ON)
+    endif()
+    add_subdirectory(vendor/gtest-1.7.0)
+    add_subdirectory(test)
+endif()
+
+add_subdirectory(vendor/pdalboost)
 add_subdirectory(src/util)
 add_subdirectory(io)
 add_subdirectory(filters)
@@ -273,18 +290,8 @@ if (BUILD_PLUGIN_PYTHON)
     add_subdirectory(src/plang)
 endif()
 
-if (WITH_TESTS)
-    enable_testing()
-    add_subdirectory(vendor/gtest-1.7.0)
-    add_subdirectory(test)
-    # Define "make check" as alias for "make test"
-    ADD_CUSTOM_TARGET(check COMMAND ctest)
-endif()
-  
-add_subdirectory(plugins)
-
-if(WITH_APPS)
-  add_subdirectory(apps)
+if (WITH_APPS)
+    add_subdirectory(apps)
 endif()
 
 #------------------------------------------------------------------------------
@@ -331,7 +338,9 @@ include(CPack)
 
 add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
 
-export(TARGETS ${PDAL_BASE_LIB_NAME} ${PDAL_UTIL_LIB_NAME}
+export(TARGETS ${PDAL_BASE_LIB_NAME}
+    ${PDAL_UTIL_LIB_NAME}
+    ${PDAL_BOOST_LIB_NAME}
     FILE "${PDAL_BINARY_DIR}/PDALTargets.cmake")
 install(EXPORT PDALTargets DESTINATION lib/pdal/cmake)
 include(${PDAL_CMAKE_DIR}/config.cmake)
@@ -340,6 +349,8 @@ feature_summary(WHAT ALL INCLUDE_QUIET_PACKAGES)
 export(PACKAGE PDAL)
 
 # TODO: move under scripts/bash-completion ?
-if (IS_DIRECTORY /etc/bash_completion.d)
-    install(FILES "${PROJECT_SOURCE_DIR}/scripts/bash-completion/pdal" DESTINATION "${CMAKE_INSTALL_PREFIX}/etc/bash_completion.d")
+if (WITH_COMPLETION)
+    if (IS_DIRECTORY /etc/bash_completion.d)
+        install(FILES "${PROJECT_SOURCE_DIR}/scripts/bash-completion/pdal" DESTINATION "${CMAKE_INSTALL_PREFIX}/etc/bash_completion.d")
+    endif()
 endif()

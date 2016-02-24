@@ -34,7 +34,6 @@
 
 #include <pdal/Writer.hpp>
 #include <pdal/Stage.hpp>
-#include <pdal/UserCallback.hpp>
 
 #include <pdal/PipelineWriter.hpp>
 
@@ -135,6 +134,31 @@ void Writer::setAutoXForm(const PointViewPtr view)
         m_yXform.m_scale = ymax / (std::numeric_limits<int>::max)();
     if (m_zXform.m_autoScale)
         m_zXform.m_scale = zmax / (std::numeric_limits<int>::max)();
+}
+
+
+void Writer::handleFilenameTemplate()
+{
+    std::string::size_type suffixPos = m_filename.find_last_of('.');
+    m_hashPos = m_filename.find_first_of('#');
+    if (m_hashPos != std::string::npos)
+    {
+        if (m_hashPos > suffixPos)
+        {
+            std::ostringstream oss;
+            oss << getName() << ": Filename template placeholder ('#') is not "
+                "allowed in filename suffix.";
+            throw pdal_error(oss.str());
+        }
+        if (m_filename.find_first_of('#', m_hashPos + 1) !=
+                std::string::npos)
+        {
+            std::ostringstream oss;
+            oss << getName() << ": Filename specification can only contain "
+                "a single '#' template placeholder.";
+            throw pdal_error(oss.str());
+        }
+    }
 }
 
 } // namespace pdal

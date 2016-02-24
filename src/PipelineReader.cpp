@@ -32,7 +32,7 @@
 * OF SUCH DAMAGE.
 ****************************************************************************/
 
-#include <pdal/PipelineReader.hpp>
+#include "PipelineReader.hpp"
 
 #include <pdal/Filter.hpp>
 #include <pdal/PipelineManager.hpp>
@@ -41,8 +41,6 @@
 
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/optional.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/algorithm/string/trim.hpp>
 
 #ifndef _WIN32
 #include <wordexp.h>
@@ -51,7 +49,7 @@
 namespace pdal
 {
 
-using namespace boost::property_tree;
+using namespace pdalboost::property_tree;
 
 // ------------------------------------------------------------------------
 
@@ -129,23 +127,6 @@ private:
 };
 
 
-PipelineReader::PipelineReader(PipelineManager& manager, bool isDebug,
-        uint32_t verboseLevel) :
-    m_manager(manager) , m_isDebug(isDebug) , m_verboseLevel(verboseLevel)
-{
-    if (m_isDebug)
-    {
-        Option opt("debug", true);
-        m_baseOptions.add(opt);
-    }
-    if (m_verboseLevel)
-    {
-        Option opt("verbose", m_verboseLevel);
-        m_baseOptions.add(opt);
-    }
-}
-
-
 Option PipelineReader::parseElement_Option(const ptree& tree)
 {
     // cur is an option element, such as this:
@@ -161,7 +142,7 @@ Option PipelineReader::parseElement_Option(const ptree& tree)
 
     std::string name = attrs["name"];
     std::string value = tree.get_value<std::string>();
-    boost::algorithm::trim(value);
+    Utils::trim(value);
     Option option(name, value);
 
     // filenames in the XML are fixed up as follows:
@@ -352,7 +333,7 @@ void PipelineReader::parse_attributes(map_t& attrs, const ptree& tree)
     {
         std::string name = iter->first;
         std::string value = tree.get<std::string>(name);
-        boost::algorithm::trim(value);
+        Utils::trim(value);
 
         attrs[name] = value;
     }
@@ -428,6 +409,8 @@ bool PipelineReader::parseElement_Pipeline(const ptree& tree)
     Stage *stage = NULL;
     Stage *writer = NULL;
 
+    Options o(m_baseOptions);
+
     map_t attrs;
     collect_attributes(attrs, tree);
 
@@ -480,7 +463,7 @@ bool PipelineReader::readPipeline(std::istream& input)
 
     xml_parser::read_xml(input, tree, xml_parser::no_comments);
 
-    boost::optional<ptree> opt(tree.get_child_optional("Pipeline"));
+    pdalboost::optional<ptree> opt(tree.get_child_optional("Pipeline"));
     if (!opt.is_initialized())
         throw pdal_error("PipelineReader: root element is not Pipeline");
     ptree subtree = opt.get();

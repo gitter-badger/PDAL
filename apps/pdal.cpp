@@ -231,11 +231,11 @@ int main(int argc, char* argv[])
     loaded_kernels = PluginManager::names(PF_PluginType_Kernel);
 
     bool isValidKernel = false;
-    std::string command(argv[1]);
+    std::string command = Utils::tolower(argv[1]);
     std::string fullname;
     for (auto name : loaded_kernels)
     {
-        if (boost::iequals(argv[1], splitDriverName(name)))
+        if (command == splitDriverName(name))
         {
             fullname = name;
             isValidKernel = true;
@@ -252,7 +252,7 @@ int main(int argc, char* argv[])
 
         for (auto name : loaded_kernels)
         {
-            if (boost::iequals(argv[1], splitDriverName(name)))
+            if (command == splitDriverName(name))
             {
                 fullname = name;
                 isValidKernel = true;

@@ -62,6 +62,12 @@
 #include "Inserter.hpp"
 #include "Extractor.hpp"
 
+#ifdef PDAL_COMPILER_MSVC
+#  pragma warning(push)
+#  pragma warning(disable: 4267 4244)  // ignore conversion warnings
+#endif
+
+
 namespace pdal
 {
 
@@ -91,7 +97,7 @@ inline bool operator < (const uuid& u1, const uuid& u2)
     return false;
 }
 
-PDAL_DLL class Uuid
+class PDAL_DLL Uuid
 {
     friend inline bool operator < (const Uuid& u1, const Uuid& u2);
 public:
@@ -163,9 +169,10 @@ public:
 
     std::string unparse() const
     {
-        std::vector<char> buf(36);
+        std::vector<char> buf(36 + 1);
         const char fmt[] = "%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X";
 
+        // TODO: use snprintf after switch to C++11
         sprintf(buf.data(), fmt,
             m_data.time_low, m_data.time_mid, m_data.time_hi_and_version,
             m_data.clock_seq >> 8, m_data.clock_seq & 0xFF,
@@ -226,4 +233,8 @@ inline std::istream& operator >> (std::istream& in, Uuid& u)
 }
 
 } // namespace pdal
+
+#ifdef PDAL_COMPILER_MSVC
+#  pragma warning(pop)
+#endif
 
